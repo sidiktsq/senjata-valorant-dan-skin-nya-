@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/valorant_post.dart';
+import 'image_viewer_page.dart';
 
 class WeaponDetail extends StatelessWidget {
   final Datum weapon;
@@ -64,7 +65,7 @@ class WeaponDetail extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Hero Showcase Senjata
+            // Hero Showcase Senjata (Dapat diklik untuk Zoom & Rotasi)
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
@@ -80,37 +81,96 @@ class WeaponDetail extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: Colors.white.withOpacity(0.10)),
               ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    child: Container(
-                      width: 28,
-                      height: 3,
-                      color: _accentRed,
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 28,
-                      horizontal: 18,
-                    ),
-                    child: Center(
-                      child: Image.network(
-                        weapon.displayIcon,
-                        height: 126,
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) =>
-                            const Icon(
-                          Icons.broken_image,
-                          size: 72,
-                          color: Colors.white38,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ImageViewerPage(
+                          imageUrl: weapon.displayIcon,
+                          title: weapon.displayName,
+                          subtitle: 'Foto Utama Senjata',
                         ),
                       ),
-                    ),
+                    );
+                  },
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        child: Container(
+                          width: 28,
+                          height: 3,
+                          color: _accentRed,
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 28,
+                          horizontal: 18,
+                        ),
+                        child: Center(
+                          child: Hero(
+                            tag: 'weapon_img_${weapon.uuid}',
+                            child: Image.network(
+                              weapon.displayIcon,
+                              height: 126,
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const Icon(
+                                Icons.broken_image,
+                                size: 72,
+                                color: Colors.white38,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Badge Petunjuk Klik untuk Zoom & Rotasi
+                      Positioned(
+                        bottom: 8,
+                        right: 10,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _bgDark.withOpacity(0.85),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: _accentRed.withOpacity(0.55),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(
+                                Icons.zoom_in,
+                                color: _accentRed,
+                                size: 14,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'KETUK UNTUK ZOOM & ROTASI',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.6,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
             const SizedBox(height: 18),
@@ -270,6 +330,12 @@ class WeaponDetail extends StatelessWidget {
               separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final skin = weapon.skins[index];
+                final skinImageUrl = skin.displayIcon ??
+                    (skin.chromas.isNotEmpty
+                        ? (skin.chromas.first.displayIcon ??
+                            skin.chromas.first.fullRender)
+                        : null);
+
                 return Container(
                   clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
@@ -277,74 +343,113 @@ class WeaponDetail extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: Colors.white.withOpacity(0.08)),
                   ),
-                  child: IntrinsicHeight(
-                    child: Row(
-                      children: [
-                        // Garis aksen tipis di sisi kiri kartu
-                        Container(
-                          width: 3,
-                          color: _accentRed.withOpacity(0.75),
-                        ),
-                        const SizedBox(width: 10),
-                        Container(
-                          width: 82,
-                          height: 52,
-                          margin: const EdgeInsets.symmetric(vertical: 10),
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: _bgDark.withOpacity(0.7),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: skin.displayIcon != null
-                              ? Image.network(
-                                  skin.displayIcon!,
-                                  fit: BoxFit.contain,
-                                  errorBuilder: (_, __, ___) => const Icon(
-                                    Icons.image_not_supported,
-                                    size: 22,
-                                    color: Colors.white38,
-                                  ),
-                                )
-                              : const Icon(
-                                  Icons.image_not_supported,
-                                  size: 22,
-                                  color: Colors.white38,
-                                ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  skin.displayName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 14,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: skinImageUrl != null && skinImageUrl.isNotEmpty
+                          ? () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ImageViewerPage(
+                                    imageUrl: skinImageUrl,
+                                    title: skin.displayName,
+                                    subtitle: 'Skin ${weapon.displayName}',
                                   ),
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${skin.chromas.length} CHROMA  •  ${skin.levels.length} LEVEL',
-                                  style: const TextStyle(
-                                    color: _textSecondary,
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ],
+                              );
+                            }
+                          : null,
+                      child: IntrinsicHeight(
+                        child: Row(
+                          children: [
+                            // Garis aksen tipis di sisi kiri kartu
+                            Container(
+                              width: 3,
+                              color: _accentRed.withOpacity(0.75),
                             ),
-                          ),
+                            const SizedBox(width: 10),
+                            Container(
+                              width: 82,
+                              height: 52,
+                              margin: const EdgeInsets.symmetric(vertical: 10),
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: _bgDark.withOpacity(0.7),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: skinImageUrl != null
+                                  ? Image.network(
+                                      skinImageUrl,
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (_, __, ___) => const Icon(
+                                        Icons.image_not_supported,
+                                        size: 22,
+                                        color: Colors.white38,
+                                      ),
+                                    )
+                                  : const Icon(
+                                      Icons.image_not_supported,
+                                      size: 22,
+                                      color: Colors.white38,
+                                    ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      skin.displayName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${skin.chromas.length} CHROMA  •  ${skin.levels.length} LEVEL',
+                                      style: const TextStyle(
+                                        color: _textSecondary,
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            if (skinImageUrl != null && skinImageUrl.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 12),
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: _bgDark.withOpacity(0.6),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: Colors.white10,
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.zoom_in,
+                                    color: _accentRed,
+                                    size: 18,
+                                  ),
+                                ),
+                              )
+                            else
+                              const SizedBox(width: 12),
+                          ],
                         ),
-                        const SizedBox(width: 12),
-                      ],
+                      ),
                     ),
                   ),
                 );

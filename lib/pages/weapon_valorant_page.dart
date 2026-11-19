@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/valorant_post.dart';
 import '../services/valorant_services.dart';
+import 'image_viewer_page.dart';
 import 'weapon_valorant_detail.dart';
 
 class ValorantPage extends StatefulWidget {
@@ -214,26 +215,40 @@ class _ValorantPageState extends State<ValorantPage> {
                         ),
                         const SizedBox(width: 12),
 
-                        // Bingkai ikon senjata
-                        Container(
-                          width: 86,
-                          height: 54,
-                          padding: const EdgeInsets.all(7),
-                          decoration: BoxDecoration(
-                            color: _bgDark.withOpacity(0.75),
-                            borderRadius: BorderRadius.circular(7),
-                            border: Border.all(color: Colors.white10),
-                          ),
-                          child: Image.network(
-                            weapon.displayIcon,
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Icon(
-                                Icons.image_not_supported,
-                                size: 24,
-                                color: Colors.white38,
-                              );
-                            },
+                        // Bingkai ikon senjata (Dapat diklik langsung untuk Zoom & Rotasi)
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ImageViewerPage(
+                                  imageUrl: weapon.displayIcon,
+                                  title: weapon.displayName,
+                                  subtitle: 'Senjata Valorant',
+                                ),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            width: 86,
+                            height: 54,
+                            padding: const EdgeInsets.all(7),
+                            decoration: BoxDecoration(
+                              color: _bgDark.withOpacity(0.75),
+                              borderRadius: BorderRadius.circular(7),
+                              border: Border.all(color: Colors.white10),
+                            ),
+                            child: Image.network(
+                              weapon.displayIcon,
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Icon(
+                                  Icons.image_not_supported,
+                                  size: 24,
+                                  color: Colors.white38,
+                                );
+                              },
+                            ),
                           ),
                         ),
                         const SizedBox(width: 14),
