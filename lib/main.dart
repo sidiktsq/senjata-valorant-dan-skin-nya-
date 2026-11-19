@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'pages/weapon_valorant_page.dart';
+import 'pages/splash_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -12,13 +12,13 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Daftar Senjata Valorant',
+      title: 'Skin Valorant',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorSchemeSeed: Colors.indigo,
+        colorSchemeSeed: const Color(0xFFFF4655), // Warna Merah Radiant khas Valorant
         useMaterial3: true,
       ),
-      home: const ValorantPage(),
+      home: const SplashScreen(),
     );
   }
 }
