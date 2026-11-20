@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/valorant_post.dart';
+import '../services/favorite_service.dart';
 import 'image_viewer_page.dart';
 
 class WeaponDetail extends StatelessWidget {
@@ -52,6 +53,42 @@ class WeaponDetail extends StatelessWidget {
             ),
           ],
         ),
+        actions: [
+          // Tombol Favorit di Detail
+          ValueListenableBuilder<Set<String>>(
+            valueListenable: FavoriteService.instance.favoriteUuidsNotifier,
+            builder: (context, favs, _) {
+              final isFav = favs.contains(weapon.uuid);
+              return IconButton(
+                icon: Icon(
+                  isFav ? Icons.favorite : Icons.favorite_border,
+                  color: isFav ? _accentRed : Colors.white70,
+                ),
+                tooltip: isFav ? 'Hapus dari Favorit' : 'Simpan ke Favorit',
+                onPressed: () {
+                  FavoriteService.instance.toggleFavorite(weapon.uuid);
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      duration: const Duration(milliseconds: 1500),
+                      backgroundColor: _cardDark,
+                      content: Text(
+                        isFav
+                            ? '${weapon.displayName} dihapus dari Favorit'
+                            : '${weapon.displayName} ditambahkan ke Favorit ❤️',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+          const SizedBox(width: 4),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Container(
@@ -118,6 +155,7 @@ class WeaponDetail extends StatelessWidget {
                             tag: 'weapon_img_${weapon.uuid}',
                             child: Image.network(
                               weapon.displayIcon,
+                              cacheWidth: 600,
                               height: 126,
                               fit: BoxFit.contain,
                               errorBuilder: (context, error, stackTrace) =>
@@ -190,23 +228,28 @@ class WeaponDetail extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                _ValorantTag(
-                  label: 'TYPE',
-                  value: categoryText.toUpperCase(),
-                ),
+                _ValorantTag(label: 'KATEGORI', value: categoryText.toUpperCase()),
                 if (weapon.shopData != null)
                   _ValorantTag(
-                    label: 'COST',
+                    label: 'HARGA',
                     value: '${weapon.shopData!.cost} CREDITS',
                     isRed: true,
+                  ),
+                if (stats != null)
+                  _ValorantTag(
+                    label: 'PENETRASI',
+                    value: stats.wallPenetration.name
+                        .replaceAll('WALL_PENETRATION_', '')
+                        .replaceAll('_', ' '),
                   ),
               ],
             ),
 
-            // Bagian Weapon Stats (Dicek null karena Melee tidak punya stats)
+            const SizedBox(height: 24),
+
+            // Bagian Statistik Senjata (Jika bukan Melee)
             if (stats != null) ...[
-              const SizedBox(height: 26),
-              const _ValorantSectionHeader(title: 'WEAPON STATS'),
+              const _ValorantSectionHeader(title: 'STATISTIK SENJATA'),
               const SizedBox(height: 12),
               Container(
                 decoration: BoxDecoration(
@@ -218,110 +261,118 @@ class WeaponDetail extends StatelessWidget {
                   children: [
                     _StatTile(
                       label: 'Fire Rate',
-                      value: '${stats.fireRate} /s',
+                      value: '${stats.fireRate} peluru / detik',
                     ),
                     _StatTile(
-                      label: 'Magazine Size',
-                      value: '${stats.magazineSize}',
+                      label: 'Kapasitas Magazin',
+                      value: '${stats.magazineSize} peluru',
                     ),
                     _StatTile(
-                      label: 'Reload Time',
-                      value: '${stats.reloadTimeSeconds}s',
+                      label: 'Waktu Reload',
+                      value: '${stats.reloadTimeSeconds} detik',
                     ),
                     _StatTile(
-                      label: 'Equip Time',
-                      value: '${stats.equipTimeSeconds}s',
+                      label: 'Waktu Equip',
+                      value: '${stats.equipTimeSeconds} detik',
                     ),
                     _StatTile(
-                      label: 'First Bullet Accuracy',
+                      label: 'Akurasi Peluru Pertama',
                       value: '${stats.firstBulletAccuracy}',
                       isLast: true,
                     ),
                   ],
                 ),
               ),
+              const SizedBox(height: 22),
 
-              // Bagian Damage Ranges
+              // Bagian Damage Berdasarkan Jarak
               if (stats.damageRanges.isNotEmpty) ...[
-                const SizedBox(height: 24),
-                const _ValorantSectionHeader(title: 'DAMAGE BY RANGE'),
+                const _ValorantSectionHeader(title: 'TABEL DAMAGE JARAK'),
                 const SizedBox(height: 12),
-                ...stats.damageRanges.map(
-                  (range) => Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: _cardDark,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.08),
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: stats.damageRanges.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final range = stats.damageRanges[index];
+                    return Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: _cardDark,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white.withOpacity(0.08)),
                       ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              '${range.rangeStartMeters}M – ${range.rangeEndMeters}M',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.6,
-                                fontSize: 13.5,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.straighten,
+                                size: 16,
+                                color: _accentRed,
                               ),
-                            ),
-                            Text(
-                              'DISTANCE',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.35),
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1.2,
-                                fontSize: 10.5,
+                              const SizedBox(width: 6),
+                              Text(
+                                '${range.rangeStartMeters}m - ${range.rangeEndMeters}m',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13,
+                                  letterSpacing: 0.5,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _DamageBox(
-                                zone: 'HEAD',
-                                damage: '${range.headDamage}',
-                                accentColor: _accentRed,
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _DamageBox(
+                                  zone: 'KEPALA',
+                                  damage: range.headDamage.toStringAsFixed(1),
+                                  accentColor: _accentRed,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _DamageBox(
-                                zone: 'BODY',
-                                damage: '${range.bodyDamage}',
-                                accentColor: Colors.white,
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _DamageBox(
+                                  zone: 'BADAN',
+                                  damage: range.bodyDamage.toStringAsFixed(1),
+                                  accentColor: Colors.white,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _DamageBox(
-                                zone: 'LEG',
-                                damage: '${range.legDamage}',
-                                accentColor: _textSecondary,
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _DamageBox(
+                                  zone: 'KAKI',
+                                  damage: range.legDamage.toStringAsFixed(1),
+                                  accentColor: _textSecondary,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
+                const SizedBox(height: 22),
               ],
             ],
 
-            const SizedBox(height: 24),
-
             // Bagian Daftar Skins
             _ValorantSectionHeader(title: 'SKINS (${weapon.skins.length})'),
+            const SizedBox(height: 6),
+            const Text(
+              'Ketuk skin untuk melihat varian warna (Chroma) & Zoom/Rotasi',
+              style: TextStyle(
+                color: _textSecondary,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
             const SizedBox(height: 12),
             ListView.separated(
               shrinkWrap: true,
@@ -346,20 +397,7 @@ class WeaponDetail extends StatelessWidget {
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      onTap: skinImageUrl != null && skinImageUrl.isNotEmpty
-                          ? () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => ImageViewerPage(
-                                    imageUrl: skinImageUrl,
-                                    title: skin.displayName,
-                                    subtitle: 'Skin ${weapon.displayName}',
-                                  ),
-                                ),
-                              );
-                            }
-                          : null,
+                      onTap: () => _showSkinChromaSheet(context, skin, weapon),
                       child: IntrinsicHeight(
                         child: Row(
                           children: [
@@ -381,6 +419,7 @@ class WeaponDetail extends StatelessWidget {
                               child: skinImageUrl != null
                                   ? Image.network(
                                       skinImageUrl,
+                                      cacheWidth: 200,
                                       fit: BoxFit.contain,
                                       errorBuilder: (_, __, ___) => const Icon(
                                         Icons.image_not_supported,
@@ -426,27 +465,24 @@ class WeaponDetail extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            if (skinImageUrl != null && skinImageUrl.isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(right: 12),
-                                child: Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: _bgDark.withOpacity(0.6),
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(
-                                      color: Colors.white10,
-                                    ),
-                                  ),
-                                  child: const Icon(
-                                    Icons.zoom_in,
-                                    color: _accentRed,
-                                    size: 18,
+                            Padding(
+                              padding: const EdgeInsets.only(right: 12),
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: _bgDark.withOpacity(0.6),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: Colors.white10,
                                   ),
                                 ),
-                              )
-                            else
-                              const SizedBox(width: 12),
+                                child: const Icon(
+                                  Icons.palette,
+                                  color: _accentRed,
+                                  size: 18,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -458,6 +494,388 @@ class WeaponDetail extends StatelessWidget {
             const SizedBox(height: 18),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showSkinChromaSheet(BuildContext context, Skin skin, Datum weapon) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _SkinChromaSheet(skin: skin, weapon: weapon),
+    );
+  }
+}
+
+class _SkinChromaSheet extends StatefulWidget {
+  final Skin skin;
+  final Datum weapon;
+
+  const _SkinChromaSheet({
+    required this.skin,
+    required this.weapon,
+  });
+
+  @override
+  State<_SkinChromaSheet> createState() => _SkinChromaSheetState();
+}
+
+class _SkinChromaSheetState extends State<_SkinChromaSheet> {
+  int _selectedChromaIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final chromas = widget.skin.chromas;
+    final currentChroma =
+        chromas.isNotEmpty ? chromas[_selectedChromaIndex] : null;
+
+    final String? currentImageUrl = currentChroma != null
+        ? (currentChroma.fullRender.isNotEmpty
+            ? currentChroma.fullRender
+            : (currentChroma.displayIcon ?? widget.skin.displayIcon))
+        : widget.skin.displayIcon;
+
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
+      decoration: const BoxDecoration(
+        color: WeaponDetail._surfaceDark,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        border: Border(
+          top: BorderSide(color: WeaponDetail._accentRed, width: 2),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Drag handle
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(top: 10, bottom: 8),
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 4, 18, 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.skin.displayName.toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'VARIAN WARNA (CHROMA) • ${widget.weapon.displayName.toUpperCase()}',
+                        style: const TextStyle(
+                          color: WeaponDetail._accentRed,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white70),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: Colors.white12),
+
+          // Scrollable Body
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Preview Box (Dapat diklik untuk Zoom & Rotasi)
+                  Container(
+                    width: double.infinity,
+                    height: 180,
+                    decoration: BoxDecoration(
+                      color: WeaponDetail._bgDark,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: currentImageUrl != null &&
+                                currentImageUrl.isNotEmpty
+                            ? () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ImageViewerPage(
+                                      imageUrl: currentImageUrl,
+                                      title: currentChroma?.displayName ??
+                                          widget.skin.displayName,
+                                      subtitle:
+                                          'Skin ${widget.weapon.displayName}',
+                                    ),
+                                  ),
+                                );
+                              }
+                            : null,
+                        child: Stack(
+                          children: [
+                            Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: currentImageUrl != null &&
+                                        currentImageUrl.isNotEmpty
+                                    ? Image.network(
+                                        currentImageUrl,
+                                        cacheWidth: 600,
+                                        fit: BoxFit.contain,
+                                        errorBuilder: (_, __, ___) =>
+                                            const Icon(
+                                          Icons.broken_image,
+                                          size: 60,
+                                          color: Colors.white38,
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.image_not_supported,
+                                        size: 60,
+                                        color: Colors.white38,
+                                      ),
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 8,
+                              right: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: WeaponDetail._bgDark.withOpacity(0.85),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: WeaponDetail._accentRed
+                                        .withOpacity(0.6),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: const [
+                                    Icon(
+                                      Icons.zoom_in,
+                                      color: WeaponDetail._accentRed,
+                                      size: 14,
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'KETUK UNTUK ZOOM & ROTASI',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+
+                  // Nama Varian Terpilih
+                  if (currentChroma != null)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: WeaponDetail._cardDark,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.white10),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.palette,
+                            color: WeaponDetail._accentRed,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              currentChroma.displayName.toUpperCase(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 16),
+
+                  // Selector Varian Chroma
+                  if (chromas.length > 1) ...[
+                    Text(
+                      'PILIH VARIAN WARNA (${chromas.length} VARIAN)',
+                      style: const TextStyle(
+                        color: WeaponDetail._textSecondary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 60,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: chromas.length,
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(width: 10),
+                        itemBuilder: (context, idx) {
+                          final chroma = chromas[idx];
+                          final isSelected = idx == _selectedChromaIndex;
+
+                          return InkWell(
+                            onTap: () {
+                              setState(() {
+                                _selectedChromaIndex = idx;
+                              });
+                            },
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              width: 60,
+                              decoration: BoxDecoration(
+                                color: WeaponDetail._cardDark,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? WeaponDetail._accentRed
+                                      : Colors.white12,
+                                  width: isSelected ? 2 : 1,
+                                ),
+                              ),
+                              child: Center(
+                                child: chroma.swatch != null &&
+                                        chroma.swatch!.isNotEmpty
+                                    ? ClipRRect(
+                                        borderRadius:
+                                            BorderRadius.circular(6),
+                                        child: Image.network(
+                                          chroma.swatch!,
+                                          cacheWidth: 100,
+                                          width: 38,
+                                          height: 38,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) =>
+                                              Text(
+                                            'V${idx + 1}',
+                                            style: TextStyle(
+                                              color: isSelected
+                                                  ? WeaponDetail._accentRed
+                                                  : Colors.white70,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                    : Text(
+                                        'V${idx + 1}',
+                                        style: TextStyle(
+                                          color: isSelected
+                                              ? WeaponDetail._accentRed
+                                              : Colors.white70,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+
+                  // Tombol Buka Fullscreen Zoom & Rotasi
+                  SizedBox(
+                    width: double.infinity,
+                    height: 46,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: WeaponDetail._accentRed,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      icon: const Icon(Icons.fullscreen, size: 20),
+                      label: const Text(
+                        'BUKA FOTO PENUH (ZOOM & ROTASI)',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 12.5,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      onPressed: currentImageUrl != null &&
+                              currentImageUrl.isNotEmpty
+                          ? () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ImageViewerPage(
+                                    imageUrl: currentImageUrl,
+                                    title: currentChroma?.displayName ??
+                                        widget.skin.displayName,
+                                    subtitle:
+                                        'Skin ${widget.weapon.displayName}',
+                                  ),
+                                ),
+                              );
+                            }
+                          : null,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
